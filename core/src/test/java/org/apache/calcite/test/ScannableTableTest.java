@@ -414,6 +414,20 @@ public class ScannableTableTest {
     assertThat(buf.toString(), is("returnCount=4, projects=[1, 0]"));
   }
 
+  @Test void testProjectableFilterableFiltering() throws Exception {
+    final StringBuilder buf = new StringBuilder();
+    final BeatlesProjectableFilterableTable table =
+        new BeatlesProjectableFilterableTable(buf, false, true);
+    final String explain = "PLAN="
+        + "EnumerableInterpreter\n"
+        + "  BindableTableScan(table=[[s, beatles]], filters=[[=($0, 5)]], projects=[[1]]";
+    CalciteAssert.that()
+        .with(newSchema("s", Pair.of("beatles", table)))
+        .query("select \"j\" from \"s\".\"beatles\" where \"i\" = 5")
+        .explainContains(explain)
+        .returnsUnordered("j=Ringo");
+  }
+
   /** Test case for
    * <a href="https://issues.apache.org/jira/browse/CALCITE-1031">[CALCITE-1031]
    * In prepared statement, CsvScannableTable.scan is called twice</a>. */
@@ -579,11 +593,20 @@ public class ScannableTableTest {
     private final AtomicInteger scanCounter = new AtomicInteger();
     private final StringBuilder buf;
     private final boolean cooperative;
+    private final boolean disableFilter;
 
     BeatlesProjectableFilterableTable(StringBuilder buf,
         boolean cooperative) {
       this.buf = buf;
       this.cooperative = cooperative;
+      this.disableFilter = false;
+    }
+
+    BeatlesProjectableFilterableTable(StringBuilder buf,
+        boolean cooperative, boolean disableFilter) {
+      this.buf = buf;
+      this.cooperative = cooperative;
+      this.disableFilter = disableFilter;
     }
 
     public RelDataType getRowType(RelDataTypeFactory typeFactory) {
@@ -597,7 +620,13 @@ public class ScannableTableTest {
     public Enumerable<@Nullable Object[]> scan(DataContext root, List<RexNode> filters,
         final int @Nullable [] projects) {
       scanCounter.incrementAndGet();
-      final Pair<Integer, Object> filter = getFilter(cooperative, filters);
+
+      final Pair<Integer, Object> filter;
+      if (disableFilter) {
+        filter = null;
+      } else {
+        filter = getFilter(cooperative, filters);
+      }
       return new AbstractEnumerable<Object[]>() {
         public Enumerator<Object[]> enumerator() {
           return beatles(buf, filter, projects);

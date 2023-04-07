@@ -49,6 +49,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.calcite.util.Static.RESOURCE;
@@ -236,7 +237,7 @@ public class TableScanNode implements Node {
         rejectedProjects = ImmutableIntList.identity(originalProjects.size());
       }
       return createEnumerable(compiler, rel, rowEnumerable, projects,
-          mutableFilters, rejectedProjects);
+          new ArrayList<>(), rejectedProjects);
     }
   }
 
